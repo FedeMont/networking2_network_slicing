@@ -10,11 +10,11 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import ether_types
 
 
-class InitFlowEntry(app_manager.RyuApp):
+class MiddleServing(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
-        super(InitFlowEntry, self).__init__(*args, **kwargs)
+        super(MiddleServing, self).__init__(*args, **kwargs)
 
         # out_port = slice_to_port[dpid][mac_address]
         self.mac_to_port = {
@@ -30,6 +30,8 @@ class InitFlowEntry(app_manager.RyuApp):
             7: {4: 2, 5: 2},
             8: {2: 5, 3: 5}
         }
+
+        self.end_switches = [7, 8]
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):

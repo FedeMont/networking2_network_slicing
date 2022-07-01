@@ -10,11 +10,11 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import ether_types
 
 
-class AddFlowEntry(app_manager.RyuApp):
+class LowerServing(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
-        super(AddFlowEntry, self).__init__(*args, **kwargs)
+        super(LowerServing, self).__init__(*args, **kwargs)
 
         # out_port = slice_to_port[dpid][mac_address]
         self.mac_to_port = {
@@ -29,6 +29,9 @@ class AddFlowEntry(app_manager.RyuApp):
             10: {3: 2, 4: 2},
             11: {2: 4, 4: 2},
         }
+
+        self.slice_GRPC = 443
+        self.end_switches = [9, 10]
 
     def add_flow(self, datapath, priority, match, actions):
         ofproto = datapath.ofproto

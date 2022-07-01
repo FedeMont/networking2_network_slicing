@@ -10,11 +10,11 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import ether_types
 
 
-class DirectionSlicing(app_manager.RyuApp):
+class UpperServing(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
-        super(DirectionSlicing, self).__init__(*args, **kwargs)
+        super(UpperServing, self).__init__(*args, **kwargs)
 
         # out_port = slice_to_port[dpid][mac_address]
         self.mac_to_port = {
@@ -29,6 +29,9 @@ class DirectionSlicing(app_manager.RyuApp):
             5: {1: 4, 2: 4},
             6: {2: 4, 4: 2},
         }
+
+        self.slice_MQTT = 8883
+        self.end_switches = [4, 5]
 
     def add_flow(self, datapath, priority, match, actions):
         ofproto = datapath.ofproto
@@ -68,6 +71,7 @@ class DirectionSlicing(app_manager.RyuApp):
     def _packet_in_handler(self, ev):
         msg = ev.msg
         datapath = msg.datapath
+        ofproto = datapath.ofproto
         in_port = msg.in_port
         dpid = datapath.id
 
@@ -79,7 +83,13 @@ class DirectionSlicing(app_manager.RyuApp):
             # self.logger.info("LLDP packet discarded.")
             return
 
+        dst = eth.dst
+        src = eth.src
+
+        # self.logger.info("packet in s%s in_port=%s eth_src=%s eth_dst=%s pkt=%s", dpid, in_port, src, dst, pkt)
+        self.logger.info("INFO packet served from UpperServing controller")
         self.logger.info("INFO packet arrived in s%s (in_port=%s)", dpid, in_port)
+        
         out_port = self.slice_to_port[dpid][in_port]
 
         if out_port == 0:
