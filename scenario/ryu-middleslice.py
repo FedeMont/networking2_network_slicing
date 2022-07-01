@@ -18,15 +18,15 @@ class MiddleServing(app_manager.RyuApp):
 
         # out_port = slice_to_port[dpid][mac_address]
         self.mac_to_port = {
-            7: {"00:00:00:00:00:09": 4, "00:00:00:00:00:10": 5},
+            7: {"00:00:00:00:00:09": 4, "00:00:00:00:00:0a": 5},
             8: {"00:00:00:00:00:03": 2, "00:00:00:00:00:04": 3}
-        }                   
+        }
 
         # out_port = slice_to_port[dpid][in_port]
         self.slice_to_port = {
             1: {2: 4, 4: 2},
             2: {1: 4, 4: 1},
-            3: {3: 4, 4: 3},                        
+            3: {3: 4, 4: 3},
             7: {4: 2, 5: 2},
             8: {2: 5, 3: 5}
         }
@@ -93,6 +93,7 @@ class MiddleServing(app_manager.RyuApp):
     def _packet_in_handler(self, ev):
         msg = ev.msg
         datapath = msg.datapath
+        ofproto = datapath.ofproto
         in_port = msg.in_port
         dpid = datapath.id
 
@@ -103,12 +104,64 @@ class MiddleServing(app_manager.RyuApp):
             # ignore lldp packet
             return
 
+        dst = eth.dst
+        src = eth.src
+
         self.logger.info(
             "INFO packet arrived in s%s (in_port=%s)", dpid, in_port)
-        out_port = self.slice_to_port[dpid][in_port]
-        actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
-        match = datapath.ofproto_parser.OFPMatch(in_port=in_port)
-        self.logger.info(
-            "INFO sending packet from s%s (out_port=%s)", dpid, out_port)
-        self.add_flow(datapath, 2, match, actions)
-        self._send_package(msg, datapath, in_port, actions)
+
+        if dpid in self.mac_to_port:
+            if dst in self.mac_to_port[dpid]:
+                out_port = self.mac_to_port[dpid][dst]
+                self.logger.info(
+                    "INFO sending packet from s%s (out_port=%s) w/ mac-to-port rule",
+                    dpid,
+                    out_port
+                )
+
+                actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
+                match = datapath.ofproto_parser.OFPMatch(dl_dst=dst)
+                self.logger.info("INFO sending packet from s%s (out_port=%s)", dpid, out_port)
+                self.add_flow(datapath, 1, match, actions)
+                self._send_package(msg, datapath, in_port, actions)
+
+            elif ():
+                msg = ev.msg
+                datapath = msg.datapath
+                in_port = msg.in_port
+                dpid = datapath.id
+
+                pkt = packet.Packet(msg.data)
+                eth = pkt.get_protocol(ethernet.ethernet)
+
+                if eth.ethertype == ether_types.ETH_TYPE_LLDP:
+                    # ignore lldp packet
+                    return
+
+                self.logger.info("INFO packet arrived in s%s (in_port=%s)", dpid, in_port)
+                out_port = self.slice_to_port[dpid][in_port]
+                actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
+                match = datapath.ofproto_parser.OFPMatch(in_port=in_port)
+                self.logger.info("INFO sending packet from s%s (out_port=%s)", dpid, out_port)
+                self.add_flow(datapath, 2, match, actions)
+                self._send_package(msg, datapath, in_port, actions)
+        
+        elif dpid not in self.end_switches:
+            out_port = ofproto.OFPP_FLOOD
+            self.logger.info(
+                "INFO sending packet from s%s (out_port=%s) w/ flooding rule",
+                dpid,
+                out_port,
+            )
+            actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
+            match = datapath.ofproto_parser.OFPMatch(in_port=in_port)
+            self.add_flow(datapath, 1, match, actions)
+            self._send_package(msg, datapath, in_port, actions)
+
+        # out_port = self.slice_to_port[dpid][in_port]
+        # actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
+        # match = datapath.ofproto_parser.OFPMatch(in_port=in_port)
+        # self.logger.info(
+        #     "INFO sending packet from s%s (out_port=%s)", dpid, out_port)
+        # self.add_flow(datapath, 2, match, actions)
+        # self._send_package(msg, datapath, in_port, actions)
