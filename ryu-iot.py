@@ -18,20 +18,16 @@ class UpperServing(app_manager.RyuApp):
 
         # out_port = slice_to_port[dpid][mac_address]
         self.mac_to_port = {
-            4: {"00:00:00:00:00:12": 1, "00:00:00:00:00:11": 4},
-            5: {"00:00:00:00:00:01": 1, "00:00:00:00:00:02": 3}
+            3: {"00:00:00:00:00:03": 2, "00:00:00:00:00:04": 1, "00:00:00:00:00:05": 1}
         }
 
         # out_port = slice_to_port[dpid][in_port]
-        self.slice_to_port = {
-            3: {1: 2, 2: 1},
-            4: {1: 2, 4: 2},
-            5: {1: 4, 2: 4},
-            6: {2: 4, 4: 2},
-        }
+        self.slice_to_port = {}
+        #     3: {4: 2, 3: 2} # TODO collegamento anche con le macchine?
+        # }
 
         self.slice_MQTT = 8883
-        self.end_switches = [4, 5]
+        self.end_switches = [3]
 
     def add_flow(self, datapath, priority, match, actions):
         ofproto = datapath.ofproto
@@ -71,35 +67,51 @@ class UpperServing(app_manager.RyuApp):
     def _packet_in_handler(self, ev):
         msg = ev.msg
         datapath = msg.datapath
-        ofproto = datapath.ofproto
         in_port = msg.in_port
         dpid = datapath.id
 
         pkt = packet.Packet(msg.data)
         eth = pkt.get_protocol(ethernet.ethernet)
 
+        dst = eth.dst
+        src = eth.src
+
         if eth.ethertype == ether_types.ETH_TYPE_LLDP:
             # ignore lldp packet
             # self.logger.info("LLDP packet discarded.")
             return
 
-        dst = eth.dst
-        src = eth.src
-
-        # self.logger.info("packet in s%s in_port=%s eth_src=%s eth_dst=%s pkt=%s", dpid, in_port, src, dst, pkt)
-        self.logger.info("INFO packet served from UpperServing controller")
-        self.logger.info("INFO packet arrived in s%s (in_port=%s)", dpid, in_port)
+        self.logger.info("INFO packet arrived in s%s (in_port=%s), dst=%s, src=%s", dpid, in_port, dst, src)
         
-        out_port = self.slice_to_port[dpid][in_port]
+        # if out_port == 0:
+        #     # ignore handshake packet
+        #     # self.logger.info("packet in s%s in_port=%s discarded.", dpid, in_port)
+        #     return
 
-        if out_port == 0:
-            # ignore handshake packet
-            # self.logger.info("packet in s%s in_port=%s discarded.", dpid, in_port)
-            return
+        if dpid in self.end_switches:
+            if dst in self.mac_to_port[dpid]:
+                out_port = self.mac_to_port[dpid][dst]
+                self.logger.info(
+                    "INFO sending packet from s%s (out_port=%s), dst=%s, src=%s w/ mac-to-port rule",
+                    dpid,
+                    out_port,
+                    dst, 
+                    src
+                )
 
-        actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
-        match = datapath.ofproto_parser.OFPMatch(in_port=in_port)
-        self.logger.info("INFO sending packet from s%s (out_port=%s)", dpid, out_port)
+                actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
+                # match = datapath.ofproto_parser.OFPMatch(in_port=in_port)
+                # self.logger.info("INFO sending packet from s%s (out_port=%s)", dpid, out_port)
+                match = datapath.ofproto_parser.OFPMatch(dl_dst=dst)
+                self.add_flow(datapath, 1, match, actions)
+                self._send_package(msg, datapath, in_port, actions)
 
-        self.add_flow(datapath, 2, match, actions)
-        self._send_package(msg, datapath, in_port, actions)
+            # else:
+            #     out_port = self.slice_to_port[dpid][in_port]
+            #     actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
+            #     match = datapath.ofproto_parser.OFPMatch(in_port=in_port)
+            #     self.logger.info("INFO sending packet from s%s (in_port=%s), dst=%s, src=%s", dpid, in_port, dst, src)
+
+            #     self.add_flow(datapath, 2, match, actions)
+            #     self._send_package(msg, datapath, in_port, actions)
+
