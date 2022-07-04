@@ -16,19 +16,21 @@ class DirectionSlicing(app_manager.RyuApp):
     def __init__(self, *args, **kwargs):
         super(DirectionSlicing, self).__init__(*args, **kwargs)
 
-
         # out_port = slice_to_port[dpid][mac_address]
         self.mac_to_port = {
-            1: {"00:00:00:00:00:04": 2, "00:00:00:00:00:05": 2},
-            4: {"00:00:00:00:00:01": 2, "00:00:00:00:00:02": 3, "00:00:00:00:00:03": 4, "00:00:00:00:00:04": 1, "00:00:00:00:00:05": 1}
-        }
-        
-        # out_port = slice_to_port[dpid][in_port]
-        self.slice_to_port = {
-            1: {3: 1, 2: 1},
+            7: {"00:00:00:00:00:0a": 4, "00:00:00:00:00:09": 5},
+            8: {"00:00:00:00:00:03": 4, "00:00:00:00:00:04": 5},
+            # 4: {"00:00:00:00:00:01": 2, "00:00:00:00:00:02": 3, "00:00:00:00:00:03": 4, "00:00:00:00:00:04": 1, "00:00:00:00:00:05": 1}
         }
 
-        self.end_switches = [1, 4]
+        # out_port = slice_to_port[dpid][in_port]
+        self.slice_to_port = {
+            7: {4: 2, 5: 2},
+            1: {1:2,2:1},
+            8: {4:2,5:2}
+        }
+
+        self.end_switches = [1, 8, 7]
 
     def add_flow(self, datapath, priority, match, actions):
         ofproto = datapath.ofproto
@@ -82,21 +84,23 @@ class DirectionSlicing(app_manager.RyuApp):
             # self.logger.info("LLDP packet discarded.")
             return
 
-        self.logger.info("INFO packet arrived in s%s (in_port=%s), dst=%s, src=%s", dpid, in_port, dst, src)
-        
+        self.logger.info(
+            "INFO packet arrived in s%s (in_port=%s), dst=%s, src=%s", dpid, in_port, dst, src)
+
         # if out_port == 0:
         #     # ignore handshake packet
         #     # self.logger.info("packet in s%s in_port=%s discarded.", dpid, in_port)
         #     return
 
         if dpid in self.end_switches:
+
             if dst in self.mac_to_port[dpid]:
                 out_port = self.mac_to_port[dpid][dst]
                 self.logger.info(
                     "INFO sending packet from s%s (out_port=%s), dst=%s, src=%s w/ mac-to-port rule",
                     dpid,
                     out_port,
-                    dst, 
+                    dst,
                     src
                 )
 
@@ -107,11 +111,13 @@ class DirectionSlicing(app_manager.RyuApp):
                 self.add_flow(datapath, 1, match, actions)
                 self._send_package(msg, datapath, in_port, actions)
 
-            else:
+            elif dst in self.slice_to_port[dpid]:
                 out_port = self.slice_to_port[dpid][in_port]
                 actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
                 match = datapath.ofproto_parser.OFPMatch(in_port=in_port)
-                self.logger.info("INFO sending packet from s%s (in_port=%s), dst=%s, src=%s", dpid, in_port, dst, src)
+                self.logger.info(
+                    "INFO sending packet from s%s (in_port=%s), dst=%s, src=%s", dpid, in_port, dst, src)
 
                 self.add_flow(datapath, 2, match, actions)
                 self._send_package(msg, datapath, in_port, actions)
+

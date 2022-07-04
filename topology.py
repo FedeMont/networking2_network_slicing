@@ -14,42 +14,54 @@ class FVTopo(Topo):
 
         # Create template host, switch, and link
         hconfig = {"inNamespace": True}
-        std_link_config = {"bw": 1000}  # IoT
-        http_link_config = {}  # normal hosts
-        host_link_config = {}
+        machinary_link_config = {"bw": 1000}  # IoT
+        mqtt_link_config = {"bw": 100}
+        std_link_config = {}
 
         # Create switch nodes
-        for i in range(4):
+        for i in range(11):
             sconfig = {"dpid": "%016x" % (i + 1)}
             self.addSwitch("s%d" % (i + 1), protocols="OpenFlow10", **sconfig)
 
         # Create host nodes
-        for i in range(7):
+        for i in range(12):
             self.addHost("h%d" % (i + 1), **hconfig)
 
-        # Add switch links
-        self.addLink("s1", "s4", **std_link_config) # port 1 - port 1
-        self.addLink("s1", "s2", **std_link_config) # port 2 - port 1
-        self.addLink("s2", "s3", **std_link_config) # port 2 - port 1
-        self.addLink("s3", "s1", **std_link_config) # port 2 - port 3
-
-        # Add host links
+        # Iot
+        # -------------------------------------------
+        self.addLink("s4", "s6", **mqtt_link_config)
+        self.addLink("s6", "s5", **mqtt_link_config)
+        self.addLink("s4", "s3", **std_link_config)
+        self.addLink("s5", "s3", **std_link_config)
+        self.addLink("h12", "s4", **std_link_config)
+        self.addLink("h11", "s4", **std_link_config)
+        self.addLink("h1", "s5", **std_link_config)
+        self.addLink("h2", "s5", **std_link_config)
 
         # Hosts
         # -------------------------------------------
-        self.addLink("h1", "s4", **host_link_config) # port 0 - port 2
-        self.addLink("h2", "s4", **host_link_config) # port 0 - port 3
-        self.addLink("h3", "s4", **host_link_config) # port 0 - port 4
+        self.addLink("s7", "s3", **std_link_config)
+        self.addLink("s3", "s8", **std_link_config)
+        self.addLink("s7", "s1", **std_link_config)
+        self.addLink("s1", "s8", **std_link_config)
+        self.addLink("s7", "s2", **std_link_config)
+        self.addLink("s2", "s8", **std_link_config)
+        self.addLink("h10", "s7", **std_link_config)
+        self.addLink("h9", "s7", **std_link_config)
+        self.addLink("h3", "s8", **std_link_config)
+        self.addLink("h4", "s8", **std_link_config)
 
         # Machineries
         # -------------------------------------------
-        self.addLink("h4", "s2", **host_link_config) # port 0 - port 3
-        self.addLink("h5", "s2", **host_link_config) # port 0 - port 4
+        self.addLink("s10", "s2", **std_link_config)
+        self.addLink("s2", "s9", **std_link_config)
+        self.addLink("s10", "s11", **machinary_link_config)
+        self.addLink("s11", "s9", **machinary_link_config)
+        self.addLink("h8", "s10", **std_link_config)
+        self.addLink("h7", "s10", **std_link_config)
+        self.addLink("h5", "s9", **std_link_config)
+        self.addLink("h6", "s9", **std_link_config)
 
-        # IoT
-        # -------------------------------------------
-        self.addLink("h6", "s3", **host_link_config) # port 0 - port 3
-        self.addLink("h7", "s3", **host_link_config) # port 0 - port 4
 
 
 topos = {"fvtopo": (lambda: FVTopo())}
