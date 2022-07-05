@@ -10,25 +10,54 @@ from ryu.lib.packet import ethernet
 from ryu.lib.packet import ether_types
 
 
-class DirectionSlicing(app_manager.RyuApp):
+class HostSlicing(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
-        super(DirectionSlicing, self).__init__(*args, **kwargs)
+        super(HostSlicing, self).__init__(*args, **kwargs)
 
         # out_port = slice_to_port[dpid][mac_address]
         self.mac_to_port = {
-            7: {"00:00:00:00:00:0a": 4, "00:00:00:00:00:09": 5, "00:00:00:00:00:01": 1, "00:00:00:00:00:02": 1},
-            8: {"00:00:00:00:00:03": 4, "00:00:00:00:00:04": 5, "00:00:00:00:00:01": 1, "00:00:00:00:00:02": 1},
+            7: {
+                "00:00:00:00:00:01": 1, 
+                "00:00:00:00:00:02": 1,
+                "00:00:00:00:00:03": 2, 
+                "00:00:00:00:00:04": 2,
+                "00:00:00:00:00:09": 5,
+                "00:00:00:00:00:0a": 4
+            },
+            8: {
+                "00:00:00:00:00:01": 1, 
+                "00:00:00:00:00:02": 1,
+                "00:00:00:00:00:03": 4, 
+                "00:00:00:00:00:04": 5, 
+                "00:00:00:00:00:09": 2,
+                "00:00:00:00:00:0a": 2
+            },
         }
 
         # out_port = slice_to_port[dpid][in_port]
         self.slice_to_port = {
-            3: {3: 2, 4: 2},
-            7: {4: 2, 5: 2},
             1: {1: 2, 2: 1},
-            8: {4: 2, 5: 2}
+            3: {3: 2, 4: 2},
+            # 7: {4: 2, 5: 2},
+            # 8: {4: 2, 5: 2}
         }
+
+        self.end_switches = [1, 2, 3, 7, 8]
+    
+    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
+    def switch_features_handler(self, ev):
+        datapath = ev.msg.datapath
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+
+        # install the table-miss flow entry.
+        match = parser.OFPMatch()
+        actions = [
+            parser.OFPActionOutput(ofproto.OFPP_CONTROLLER)
+        ]
+        self.add_flow(datapath, 0, match, actions)
 
     def add_flow(self, datapath, priority, match, actions):
         ofproto = datapath.ofproto
@@ -86,19 +115,15 @@ class DirectionSlicing(app_manager.RyuApp):
             return
 
         print(dst, dpid, in_port)
-        self.logger.info(
-            "INFO packet arrived in s%s (in_port=%s), dst=%s, src=%s", dpid, in_port, dst, src)
+        self.logger.info("INFO packet arrived in s%s (in_port=%s), dst=%s, src=%s", dpid, in_port, dst, src)
 
-        in_slice = dpid in self.slice_to_port
-        in_in_port = in_slice and (in_port in self.slice_to_port[dpid])
-        in_mac = dpid in self.mac_to_port
-        in_dst = in_mac and (dst in self.mac_to_port[dpid])
+        if dpid in self.end_switches:
+            in_slice = dpid in self.slice_to_port
+            in_in_port = in_slice and (in_port in self.slice_to_port[dpid])
+            in_mac = dpid in self.mac_to_port
+            in_dst = in_mac and (dst in self.mac_to_port[dpid])
 
-        if in_slice or in_mac:
-            print("PKT OK")
-            print(in_in_port, in_dst)
-
-            if in_in_port and in_dst:
+            if not in_in_port and in_dst:
                 out_port = self.mac_to_port[dpid][dst]
                 self.logger.info(
                     "INFO sending packet from s%s (out_port=%s), dst=%s, src=%s w/ mac-to-port rule",
@@ -125,23 +150,6 @@ class DirectionSlicing(app_manager.RyuApp):
                     src
                 )
                 actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
-                match = datapath.ofproto_parser.OFPMatch(in_port=in_port)
-                self.add_flow(datapath, 1, match, actions)
-                self._send_package(msg, datapath, in_port, actions)
-
-            elif not in_in_port and in_dst:
-                out_port = self.mac_to_port[dpid][dst]
-                self.logger.info(
-                    "INFO sending packet from s%s (out_port=%s), dst=%s, src=%s w/ mac-to-port rule",
-                    dpid,
-                    out_port,
-                    dst,
-                    src
-                )
-
-                actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
-                # match = datapath.ofproto_parser.OFPMatch(in_port=in_port)
-                # self.logger.info("INFO sending packet from s%s (out_port=%s)", dpid, out_port)
-                match = datapath.ofproto_parser.OFPMatch(dl_dst=dst)
+                match = datapath.ofproto_parser.OFPMatch(in_port = in_port)
                 self.add_flow(datapath, 1, match, actions)
                 self._send_package(msg, datapath, in_port, actions)

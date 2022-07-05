@@ -14,11 +14,11 @@ from ryu.lib.packet import tcp
 from ryu.lib.packet import icmp
 
 
-class IotSlicing(app_manager.RyuApp):
+class MachinerieSlicing(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
-        super(IotSlicing, self).__init__(*args, **kwargs)
+        super(MachinerieSlicing, self).__init__(*args, **kwargs)
 
         # out_port = slice_to_port[dpid][mac_address]
         self.mac_to_port = {
@@ -32,7 +32,7 @@ class IotSlicing(app_manager.RyuApp):
             3: {3: 2, 4: 2} # TODO: Va qua?
         }
 
-        self.end_switches = [3, 4, 5, 6]
+        self.end_switches = [10, 11, 12, 13]
         self.slice_UDPport = 1883
     
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)

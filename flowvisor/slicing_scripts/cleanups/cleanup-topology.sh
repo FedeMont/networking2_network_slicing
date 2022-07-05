@@ -8,9 +8,9 @@ sleep 10
 echo "Done."
 
 echo "Cleaning FlowVisor from slices previously defined..."
-fvctl -f /etc/flowvisor/flowvisor.passwd remove-slice iotslice
-fvctl -f /etc/flowvisor/flowvisor.passwd remove-slice machineriesslice
-fvctl -f /etc/flowvisor/flowvisor.passwd remove-slice hostsslice
+fvctl -f /etc/flowvisor/flowvisor.passwd remove-slice iot
+fvctl -f /etc/flowvisor/flowvisor.passwd remove-slice machineries
+fvctl -f /etc/flowvisor/flowvisor.passwd remove-slice hosts
 
 echo "Check cleanup just performed:"
 fvctl -f /etc/flowvisor/flowvisor.passwd list-slices
