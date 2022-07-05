@@ -22,14 +22,22 @@ class MachinerieSlicing(app_manager.RyuApp):
 
         # out_port = slice_to_port[dpid][mac_address]
         self.mac_to_port = {
-            2: {
-                "00:00:00:00:00:03": 2, 
-                "00:00:00:00:00:04": 2,
+            9: {
+                "00:00:00:00:00:03": 1, 
+                "00:00:00:00:00:04": 1,
+                "00:00:00:00:00:05": 3, 
+                "00:00:00:00:00:06": 4,
                 "00:00:00:00:00:09": 1,
                 "00:00:00:00:00:0a": 1
             },
-            9: {"00:00:00:00:00:08": 3, "00:00:00:00:00:07": 4},
-            10: {"00:00:00:00:00:05": 3, "00:00:00:00:00:06": 4}
+            10: {
+                "00:00:00:00:00:03": 1, 
+                "00:00:00:00:00:04": 1,
+                "00:00:00:00:00:07": 4, 
+                "00:00:00:00:00:08": 3,
+                "00:00:00:00:00:09": 1,
+                "00:00:00:00:00:0a": 1
+            },
         }
 
         # out_port = slice_to_port[dpid][in_port]
@@ -37,7 +45,7 @@ class MachinerieSlicing(app_manager.RyuApp):
             11: {1: 2, 2: 1}  
         }
 
-        self.end_switches = [2, 9, 10, 11]
+        self.end_switches = [9, 10, 11]
         self.slice_UDPport = 9999
     
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
@@ -114,13 +122,17 @@ class MachinerieSlicing(app_manager.RyuApp):
         if dpid in self.end_switches:
             # print(pkt.get_protocol(tcp.tcp),pkt.get_protocol(tcp.tcp).dst_port,pkt.get_protocol(tcp.tcp).src_port)
             # print(pkt.get_protocol(udp.udp), pkt.get_protocol(udp.udp).dst_port, pkt.get_protocol(udp.udp).src_port)
-            print(pkt.get_protocol(udp.udp))
+            # print(pkt.get_protocol(udp.udp), pkt.get_protocol(tcp.tcp), pkt.get_protocol(icmp.icmp))
             if (
-                # pkt.get_protocol(udp.udp)
-                # and pkt.get_protocol(udp.udp).dst_port == self.slice_UDPport
-                True
+                pkt.get_protocol(tcp.tcp)
+                and (
+                    pkt.get_protocol(tcp.tcp).dst_port == self.slice_TCPport
+                    or
+                    pkt.get_protocol(tcp.tcp).src_port == self.slice_TCPport
+                )
+                # True
             ):
-                print('UDP GIUSTO')
+                print('TCP GIUSTO')
             
                 in_slice = dpid in self.slice_to_port
                 in_in_port = in_slice and (in_port in self.slice_to_port[dpid])

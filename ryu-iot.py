@@ -22,17 +22,17 @@ class IotSlicing(app_manager.RyuApp):
 
         # out_port = slice_to_port[dpid][mac_address]
         self.mac_to_port = {
-            4: {"00:00:00:00:00:0c": 3, "00:00:00:00:00:0b": 4},
+            4: {"00:00:00:00:00:0b": 4, "00:00:00:00:00:0c": 3},
             5: {"00:00:00:00:00:01": 3, "00:00:00:00:00:02": 4},
         }
 
         # out_port = slice_to_port[dpid][in_port]
         self.slice_to_port = {
-            6: {1: 2, 2: 1},
-            3: {3: 2, 4: 2} # TODO: Va qua?
+            6: {1: 2},
+            # 6: {1: 2, 2: 1},
         }
 
-        self.end_switches = [3, 4, 5, 6]
+        self.end_switches = [4, 5, 6]
         self.slice_UDPport = 1883
     
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
@@ -111,9 +111,9 @@ class IotSlicing(app_manager.RyuApp):
             # print(pkt.get_protocol(udp.udp), pkt.get_protocol(udp.udp).dst_port, pkt.get_protocol(udp.udp).src_port)
             print(pkt.get_protocol(udp.udp))
             if (
-                # pkt.get_protocol(udp.udp)
-                # and pkt.get_protocol(udp.udp).dst_port == self.slice_UDPport
-                True
+                pkt.get_protocol(udp.udp)
+                and pkt.get_protocol(udp.udp).dst_port == self.slice_UDPport
+                # True
             ):
                 print('UDP GIUSTO')
             
