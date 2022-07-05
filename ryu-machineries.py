@@ -17,23 +17,28 @@ from ryu.lib.packet import icmp
 class MachinerieSlicing(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs): 
         super(MachinerieSlicing, self).__init__(*args, **kwargs)
 
         # out_port = slice_to_port[dpid][mac_address]
         self.mac_to_port = {
-            4: {"00:00:00:00:00:0c": 3, "00:00:00:00:00:0b": 4},
-            5: {"00:00:00:00:00:01": 3, "00:00:00:00:00:02": 4},
+            2: {
+                "00:00:00:00:00:03": 2, 
+                "00:00:00:00:00:04": 2,
+                "00:00:00:00:00:09": 1,
+                "00:00:00:00:00:0a": 1
+            },
+            9: {"00:00:00:00:00:08": 3, "00:00:00:00:00:07": 4},
+            10: {"00:00:00:00:00:05": 3, "00:00:00:00:00:06": 4}
         }
 
         # out_port = slice_to_port[dpid][in_port]
         self.slice_to_port = {
-            6: {1: 2, 2: 1},
-            3: {3: 2, 4: 2} # TODO: Va qua?
+            11: {1: 2, 2: 1}  
         }
 
-        self.end_switches = [10, 11, 12, 13]
-        self.slice_UDPport = 1883
+        self.end_switches = [2, 9, 10, 11]
+        self.slice_UDPport = 9999
     
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -123,7 +128,7 @@ class MachinerieSlicing(app_manager.RyuApp):
                 in_dst = in_mac and (dst in self.mac_to_port[dpid])
                 
                 if not in_in_port and not in_dst:
-                    out_port = 1
+                    out_port = 2
                     self.logger.info(
                         "INFO sending packet from s%s (out_port=%s), dst=%s, src=%s w/ mac-to-port rule",
                         dpid,
