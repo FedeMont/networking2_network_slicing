@@ -80,7 +80,7 @@ class LowerServing(app_manager.RyuApp):
             # self.logger.info("LLDP packet discarded.")
             return
 
-        self.logger.info("INFO packet arrived in s%s (in_port=%s), dst=%s, src=%s", dpid, in_port, dst, src)
+        # self.logger.info("INFO packet arrived in s%s (in_port=%s), dst=%s, src=%s", dpid, in_port, dst, src)
         
         # if out_port == 0:
         #     # ignore handshake packet
@@ -88,6 +88,7 @@ class LowerServing(app_manager.RyuApp):
         #     return
 
         if dpid in self.end_switches:
+            self.logger.info("INFO packet arrived in s%s (in_port=%s), dst=%s, src=%s", dpid, in_port, dst, src)
             if dst in self.mac_to_port[dpid]:
                 out_port = self.mac_to_port[dpid][dst]
                 self.logger.info(

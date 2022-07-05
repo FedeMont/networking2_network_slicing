@@ -42,11 +42,18 @@ fvctl -f /etc/flowvisor/flowvisor.passwd list-slices
 echo "Definition of flowspaces..."
 # add-flowspace: <flowspace-name> <dpid> <priority> <match> <slice-perm>
 fvctl -f /etc/flowvisor/flowvisor.passwd add-flowspace dpid1-port1 1 1 in_port=1 hosts=7
+fvctl -f /etc/flowvisor/flowvisor.passwd add-flowspace dpid1-port2 1 1 in_port=2 machineries=7
+fvctl -f /etc/flowvisor/flowvisor.passwd add-flowspace dpid1-port3 1 1 in_port=3 iot=7
+
 fvctl -f /etc/flowvisor/flowvisor.passwd add-flowspace dpid4 4 1 any hosts=7
 
+fvctl -f /etc/flowvisor/flowvisor.passwd add-flowspace dpid2-port1 2 1 in_port=1 hosts=7
+fvctl -f /etc/flowvisor/flowvisor.passwd add-flowspace dpid2-port2 2 1 in_port=2 iot=7
 fvctl -f /etc/flowvisor/flowvisor.passwd add-flowspace dpid2-port3 2 1 in_port=3 machineries=7
 fvctl -f /etc/flowvisor/flowvisor.passwd add-flowspace dpid2-port4 2 1 in_port=4 machineries=7
 
+fvctl -f /etc/flowvisor/flowvisor.passwd add-flowspace dpid3-port1 3 1 in_port=1 machineries=7
+fvctl -f /etc/flowvisor/flowvisor.passwd add-flowspace dpid3-port2 3 1 in_port=2 hosts=7
 fvctl -f /etc/flowvisor/flowvisor.passwd add-flowspace dpid3-port3 3 1 in_port=3 iot=7
 fvctl -f /etc/flowvisor/flowvisor.passwd add-flowspace dpid3-port4 3 1 in_port=4 iot=7
 

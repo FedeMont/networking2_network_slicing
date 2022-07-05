@@ -25,7 +25,7 @@ class DirectionSlicing(app_manager.RyuApp):
         
         # out_port = slice_to_port[dpid][in_port]
         self.slice_to_port = {
-            1: {3: 1, 2: 1},
+            1: {3: 1, 2: 1}
         }
 
         self.end_switches = [1, 4]
@@ -82,7 +82,7 @@ class DirectionSlicing(app_manager.RyuApp):
             # self.logger.info("LLDP packet discarded.")
             return
 
-        self.logger.info("INFO packet arrived in s%s (in_port=%s), dst=%s, src=%s", dpid, in_port, dst, src)
+        # self.logger.info("INFO packet arrived in s%s (in_port=%s), dst=%s, src=%s", dpid, in_port, dst, src)
         
         # if out_port == 0:
         #     # ignore handshake packet
@@ -90,6 +90,8 @@ class DirectionSlicing(app_manager.RyuApp):
         #     return
 
         if dpid in self.end_switches:
+            self.logger.info("INFO packet arrived in s%s (in_port=%s), dst=%s, src=%s", dpid, in_port, dst, src)
+
             if dst in self.mac_to_port[dpid]:
                 out_port = self.mac_to_port[dpid][dst]
                 self.logger.info(
@@ -107,7 +109,7 @@ class DirectionSlicing(app_manager.RyuApp):
                 self.add_flow(datapath, 1, match, actions)
                 self._send_package(msg, datapath, in_port, actions)
 
-            else:
+            elif dpid in self.slice_to_port and dst in self.slice_to_port[dpid]:
                 out_port = self.slice_to_port[dpid][in_port]
                 actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
                 match = datapath.ofproto_parser.OFPMatch(in_port=in_port)
