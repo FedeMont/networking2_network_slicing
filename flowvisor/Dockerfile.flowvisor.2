@@ -36,4 +36,5 @@ ENV BUILD_NUMBER docker
 RUN fvconfig load /etc/flowvisor/config.json && \
     chown -R flowvisor:flowvisor /usr/share/db/flowvisor/
 
-CMD ["bash"]
+# ENTRYPOINT ["bash ~/slicing_script/flowvisor_slicing.sh"]
+CMD [ "bash","/root/slicing_scripts/flowvisor_slicing.sh " ]

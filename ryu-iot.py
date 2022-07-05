@@ -1,6 +1,7 @@
+from traceback import print_tb
 from ryu.base import app_manager
 from ryu.controller import ofp_event
-from ryu.controller.handler import MAIN_DISPATCHER
+from ryu.controller.handler import CONFIG_DISPATCHER, MAIN_DISPATCHER
 from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_0
 
@@ -8,39 +9,50 @@ from ryu.lib.mac import haddr_to_bin
 from ryu.lib.packet import packet
 from ryu.lib.packet import ethernet
 from ryu.lib.packet import ether_types
+from ryu.lib.packet import udp
+from ryu.lib.packet import tcp
+from ryu.lib.packet import icmp
 
 
-class UpperServing(app_manager.RyuApp):
+class DirectionSlicing(app_manager.RyuApp):
     OFP_VERSIONS = [ofproto_v1_0.OFP_VERSION]
 
     def __init__(self, *args, **kwargs):
-        super(UpperServing, self).__init__(*args, **kwargs)
+        super(DirectionSlicing, self).__init__(*args, **kwargs)
 
         # out_port = slice_to_port[dpid][mac_address]
         self.mac_to_port = {
-            3: {"00:00:00:00:00:03": 2, "00:00:00:00:00:04": 1, "00:00:00:00:00:05": 1}
+            4: {"00:00:00:00:00:0c": 3, "00:00:00:00:00:0b": 4},
+            5: {"00:00:00:00:00:01": 3, "00:00:00:00:00:02": 4},
         }
 
-        # out_port = slice_to_port[dpid][in_port]
-        self.slice_to_port = {}
-        #     3: {4: 2, 3: 2} # TODO collegamento anche con le macchine?
+        # out_port = slice_to_port[dpid][mac_address]
+        # self.mac_to_port_mqtt = {
+        #     4: {"00:00:00:00:00:01": 1, "00:00:00:00:00:02": 1},
+        #     5: {"00:00:00:00:00:0a": 1, "00:00:00:00:00:0b": 1},
         # }
 
-        self.slice_MQTT = 8883
-        self.end_switches = [3]
+        # out_port = slice_to_port[dpid][in_port]
+        self.slice_to_port = {
+            6: {1: 2, 2: 1},
+            3: {3: 2, 4: 2}
+        }
+
+        self.end_switches = [4, 5, 6]
+
+        self.slice_UDPport = 1883
 
     def add_flow(self, datapath, priority, match, actions):
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
-
         # construct flow_mod message and send it.
         mod = parser.OFPFlowMod(
             datapath=datapath,
             match=match,
             cookie=0,
             command=ofproto.OFPFC_ADD,
-            idle_timeout=20,
-            hard_timeout=120,
+            idle_timeout=0,
+            hard_timeout=0,
             priority=priority,
             flags=ofproto.OFPFF_SEND_FLOW_REM,
             actions=actions,
@@ -67,6 +79,7 @@ class UpperServing(app_manager.RyuApp):
     def _packet_in_handler(self, ev):
         msg = ev.msg
         datapath = msg.datapath
+        ofproto = datapath.ofproto
         in_port = msg.in_port
         dpid = datapath.id
 
@@ -81,37 +94,71 @@ class UpperServing(app_manager.RyuApp):
             # self.logger.info("LLDP packet discarded.")
             return
 
+        if dst[:2] == '33':
+            return
+
+        print(dst,dpid,in_port)
         self.logger.info("INFO packet arrived in s%s (in_port=%s), dst=%s, src=%s", dpid, in_port, dst, src)
         
-        # if out_port == 0:
-        #     # ignore handshake packet
-        #     # self.logger.info("packet in s%s in_port=%s discarded.", dpid, in_port)
-        #     return
-
         if dpid in self.end_switches:
-            if dst in self.mac_to_port[dpid]:
-                out_port = self.mac_to_port[dpid][dst]
-                self.logger.info(
-                    "INFO sending packet from s%s (out_port=%s), dst=%s, src=%s w/ mac-to-port rule",
-                    dpid,
-                    out_port,
-                    dst, 
-                    src
-                )
+            # print(pkt.get_protocol(tcp.tcp),pkt.get_protocol(tcp.tcp).dst_port,pkt.get_protocol(tcp.tcp).src_port)
+            # print(pkt.get_protocol(udp.udp), pkt.get_protocol(udp.udp).dst_port, pkt.get_protocol(udp.udp).src_port)
+            print(pkt.get_protocol(udp.udp))
+            if (
+                pkt.get_protocol(udp.udp)
+                and pkt.get_protocol(udp.udp).dst_port == self.slice_UDPport
+            ):
+                print('UDP GIUSTO')
+            
+                in_slice = dpid in self.slice_to_port
+                in_in_port = in_slice and (in_port in self.slice_to_port[dpid])
+                in_mac = dpid in self.mac_to_port
+                in_dst = in_mac and (dst in self.mac_to_port[dpid])
+                
+                if not in_in_port and not in_dst:
+                    out_port = 1
+                    self.logger.info(
+                        "INFO sending packet from s%s (out_port=%s), dst=%s, src=%s w/ mac-to-port rule",
+                        dpid,
+                        out_port,
+                        dst,
+                        src
+                    )
 
-                actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
-                # match = datapath.ofproto_parser.OFPMatch(in_port=in_port)
-                # self.logger.info("INFO sending packet from s%s (out_port=%s)", dpid, out_port)
-                match = datapath.ofproto_parser.OFPMatch(dl_dst=dst)
-                self.add_flow(datapath, 1, match, actions)
-                self._send_package(msg, datapath, in_port, actions)
+                    actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
+                    # match = datapath.ofproto_parser.OFPMatch(in_port=in_port)
+                    # self.logger.info("INFO sending packet from s%s (out_port=%s)", dpid, out_port)
+                    match = datapath.ofproto_parser.OFPMatch(dl_dst=dst)
+                    self.add_flow(datapath, 1, match, actions)
+                    self._send_package(msg, datapath, in_port, actions)
 
-            # else:
-            #     out_port = self.slice_to_port[dpid][in_port]
-            #     actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
-            #     match = datapath.ofproto_parser.OFPMatch(in_port=in_port)
-            #     self.logger.info("INFO sending packet from s%s (in_port=%s), dst=%s, src=%s", dpid, in_port, dst, src)
+                elif not in_in_port and in_dst:
+                    out_port = self.mac_to_port[dpid][dst]
+                    self.logger.info(
+                        "INFO sending packet from s%s (out_port=%s), dst=%s, src=%s w/ mac-to-port rule",
+                        dpid,
+                        out_port,
+                        dst,
+                        src
+                    )
 
-            #     self.add_flow(datapath, 2, match, actions)
-            #     self._send_package(msg, datapath, in_port, actions)
+                    actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
+                    # match = datapath.ofproto_parser.OFPMatch(in_port=in_port)
+                    # self.logger.info("INFO sending packet from s%s (out_port=%s)", dpid, out_port)
+                    match = datapath.ofproto_parser.OFPMatch(dl_dst=dst)
+                    self.add_flow(datapath, 1, match, actions)
+                    self._send_package(msg, datapath, in_port, actions)
 
+                elif in_in_port and not in_dst:
+                    out_port = self.slice_to_port[dpid][in_port]
+                    self.logger.info(
+                        "INFO sending packet from s%s (out_port=%s), dst=%s, src=%s w/ slice-to-port rule",
+                        dpid,
+                        out_port,
+                        dst,
+                        src
+                    )
+                    actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
+                    match = datapath.ofproto_parser.OFPMatch(in_port = in_port)
+                    self.add_flow(datapath, 1, match, actions)
+                    self._send_package(msg, datapath, in_port, actions)
