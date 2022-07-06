@@ -116,7 +116,6 @@ class IotSlicing(app_manager.RyuApp):
                 and pkt.get_protocol(udp.udp).dst_port == self.slice_UDPport
                 # True
             ):
-                print('UDP GIUSTO')
 
                 in_slice = dpid in self.slice_to_port
                 in_in_port = in_slice and (in_port in self.slice_to_port[dpid])

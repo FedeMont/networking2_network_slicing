@@ -133,8 +133,7 @@ class MachinerieSlicing(app_manager.RyuApp):
                 )
                 # True
             ):
-                print('TCP GIUSTO')
-            
+
                 in_slice = dpid in self.slice_to_port
                 in_in_port = in_slice and (in_port in self.slice_to_port[dpid])
                 in_mac = dpid in self.mac_to_port
