@@ -28,13 +28,13 @@ class IotSlicing(app_manager.RyuApp):
 
         # out_port = slice_to_port[dpid][in_port]
         self.slice_to_port = {
-            6: {1: 2},
+            6: {1: 2, 2: 0},
             # 6: {1: 2, 2: 1},
         }
 
         self.end_switches = [4, 5, 6]
         self.slice_UDPport = 1883
-    
+
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
         datapath = ev.msg.datapath
@@ -57,8 +57,8 @@ class IotSlicing(app_manager.RyuApp):
             match=match,
             cookie=0,
             command=ofproto.OFPFC_ADD,
-            idle_timeout=0,
-            hard_timeout=0,
+            idle_timeout=20,
+            hard_timeout=120,
             priority=priority,
             flags=ofproto.OFPFF_SEND_FLOW_REM,
             actions=actions,
@@ -103,25 +103,26 @@ class IotSlicing(app_manager.RyuApp):
         if dst[:2] == '33':
             return
 
-        print(dst,dpid,in_port)
-        self.logger.info("INFO packet arrived in s%s (in_port=%s), dst=%s, src=%s", dpid, in_port, dst, src)
-        
+        print(dst, dpid, in_port)
+        self.logger.info(
+            "INFO packet arrived in s%s (in_port=%s), dst=%s, src=%s", dpid, in_port, dst, src)
+
         if dpid in self.end_switches:
             # print(pkt.get_protocol(tcp.tcp),pkt.get_protocol(tcp.tcp).dst_port,pkt.get_protocol(tcp.tcp).src_port)
             # print(pkt.get_protocol(udp.udp), pkt.get_protocol(udp.udp).dst_port, pkt.get_protocol(udp.udp).src_port)
-            print(pkt.get_protocol(udp.udp))
+            # print(pkt.get_protocol(udp.udp))
             if (
                 pkt.get_protocol(udp.udp)
                 and pkt.get_protocol(udp.udp).dst_port == self.slice_UDPport
                 # True
             ):
                 print('UDP GIUSTO')
-            
+
                 in_slice = dpid in self.slice_to_port
                 in_in_port = in_slice and (in_port in self.slice_to_port[dpid])
                 in_mac = dpid in self.mac_to_port
                 in_dst = in_mac and (dst in self.mac_to_port[dpid])
-                
+
                 if not in_in_port and not in_dst:
                     out_port = 1
                     self.logger.info(
@@ -132,8 +133,15 @@ class IotSlicing(app_manager.RyuApp):
                         src
                     )
 
-                    actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
-                    match = datapath.ofproto_parser.OFPMatch(dl_dst=dst)
+                    actions = [
+                        datapath.ofproto_parser.OFPActionOutput(out_port)]
+                    match = datapath.ofproto_parser.OFPMatch(
+                        in_port=in_port,
+                        dl_dst=dst,
+                        dl_src=src,
+                        dl_type=ether_types.ETH_TYPE_IP,
+                        nw_proto=0x11
+                    )
                     self.add_flow(datapath, 1, match, actions)
                     self._send_package(msg, datapath, in_port, actions)
 
@@ -147,15 +155,27 @@ class IotSlicing(app_manager.RyuApp):
                         src
                     )
 
-                    actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
+                    actions = [
+                        datapath.ofproto_parser.OFPActionOutput(out_port)]
                     # match = datapath.ofproto_parser.OFPMatch(in_port=in_port)
                     # self.logger.info("INFO sending packet from s%s (out_port=%s)", dpid, out_port)
-                    match = datapath.ofproto_parser.OFPMatch(dl_dst=dst)
+                    match = datapath.ofproto_parser.OFPMatch(
+                        in_port=in_port,
+                        dl_dst=dst,
+                        dl_src=src,
+                        dl_type=ether_types.ETH_TYPE_IP,
+                        nw_proto=0x11
+                    )
                     self.add_flow(datapath, 1, match, actions)
                     self._send_package(msg, datapath, in_port, actions)
 
                 elif in_in_port and not in_dst:
                     out_port = self.slice_to_port[dpid][in_port]
+
+                    # Block left side of IoT from right
+                    if out_port == 0:
+                        return
+
                     self.logger.info(
                         "INFO sending packet from s%s (out_port=%s), dst=%s, src=%s w/ slice-to-port rule",
                         dpid,
@@ -163,7 +183,14 @@ class IotSlicing(app_manager.RyuApp):
                         dst,
                         src
                     )
-                    actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
-                    match = datapath.ofproto_parser.OFPMatch(in_port = in_port)
+                    actions = [
+                        datapath.ofproto_parser.OFPActionOutput(out_port)]
+                    match = datapath.ofproto_parser.OFPMatch(
+                        in_port=in_port,
+                        dl_dst=dst,
+                        dl_src=src,
+                        dl_type=ether_types.ETH_TYPE_IP,
+                        nw_proto=0x11
+                    )
                     self.add_flow(datapath, 1, match, actions)
                     self._send_package(msg, datapath, in_port, actions)

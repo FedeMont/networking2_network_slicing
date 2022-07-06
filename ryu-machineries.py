@@ -46,7 +46,7 @@ class MachinerieSlicing(app_manager.RyuApp):
         }
 
         self.end_switches = [9, 10, 11]
-        self.slice_UDPport = 9999
+        self.slice_TCPport = 9999
     
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -70,8 +70,8 @@ class MachinerieSlicing(app_manager.RyuApp):
             match=match,
             cookie=0,
             command=ofproto.OFPFC_ADD,
-            idle_timeout=0,
-            hard_timeout=0,
+            idle_timeout=20,
+            hard_timeout=120,
             priority=priority,
             flags=ofproto.OFPFF_SEND_FLOW_REM,
             actions=actions,
@@ -123,6 +123,7 @@ class MachinerieSlicing(app_manager.RyuApp):
             # print(pkt.get_protocol(tcp.tcp),pkt.get_protocol(tcp.tcp).dst_port,pkt.get_protocol(tcp.tcp).src_port)
             # print(pkt.get_protocol(udp.udp), pkt.get_protocol(udp.udp).dst_port, pkt.get_protocol(udp.udp).src_port)
             # print(pkt.get_protocol(udp.udp), pkt.get_protocol(tcp.tcp), pkt.get_protocol(icmp.icmp))
+            # print(pkt.get_protocol(tcp.tcp).dst_port,pkt.get_protocol(tcp.tcp).src_port)
             if (
                 pkt.get_protocol(tcp.tcp)
                 and (
@@ -149,8 +150,14 @@ class MachinerieSlicing(app_manager.RyuApp):
                         src
                     )
 
+                    match = datapath.ofproto_parser.OFPMatch(
+                        in_port=in_port,
+                        dl_dst=dst,
+                        dl_src=src,
+                        dl_type=ether_types.ETH_TYPE_IP,
+                        nw_proto=0x06
+                        )
                     actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
-                    match = datapath.ofproto_parser.OFPMatch(dl_dst=dst)
                     self.add_flow(datapath, 1, match, actions)
                     self._send_package(msg, datapath, in_port, actions)
 
@@ -167,7 +174,13 @@ class MachinerieSlicing(app_manager.RyuApp):
                     actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
                     # match = datapath.ofproto_parser.OFPMatch(in_port=in_port)
                     # self.logger.info("INFO sending packet from s%s (out_port=%s)", dpid, out_port)
-                    match = datapath.ofproto_parser.OFPMatch(dl_dst=dst)
+                    match = datapath.ofproto_parser.OFPMatch(
+                        in_port=in_port,
+                        dl_dst=dst,
+                        dl_src=src,
+                        dl_type=ether_types.ETH_TYPE_IP,
+                        nw_proto=0x06
+                        )
                     self.add_flow(datapath, 1, match, actions)
                     self._send_package(msg, datapath, in_port, actions)
 
@@ -181,6 +194,12 @@ class MachinerieSlicing(app_manager.RyuApp):
                         src
                     )
                     actions = [datapath.ofproto_parser.OFPActionOutput(out_port)]
-                    match = datapath.ofproto_parser.OFPMatch(in_port = in_port)
+                    match = datapath.ofproto_parser.OFPMatch(
+                        in_port=in_port,
+                        dl_dst=dst,
+                        dl_src=src,
+                        dl_type=ether_types.ETH_TYPE_IP,
+                        nw_proto=0x06
+                        )
                     self.add_flow(datapath, 1, match, actions)
                     self._send_package(msg, datapath, in_port, actions)

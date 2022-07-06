@@ -14,8 +14,8 @@ class FVTopo(Topo):
 
         # Create template host, switch, and link
         hconfig = {"inNamespace": True}
-        machinary_link_config = {"bw": 1000}  # IoT
-        mqtt_link_config = {"bw": 100}
+        machinary_link_config = {"bw": 100}
+        mqtt_link_config = {"bw": 10}
         std_link_config = {}
 
         # Create switch nodes
