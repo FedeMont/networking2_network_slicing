@@ -34,7 +34,7 @@ Software developed as part of the exam:
 
 ## Implementation
 
-![alt text](implementation.png "Implementation")
+![alt text](Implementation.png "Implementation")
 
 - **Topology** (hosts and switches): defined in ComNetsEmu.
 - **FlowVisor** (core controller): stands in between the switches and the tenant controllers; defines the slices to which one RYU controller is assigned each (enabling multi-tenancy); policy checks each OpenFlow message that goes through it, checking permissions related to the policies defined.
