@@ -162,7 +162,7 @@ mininet> xterm h12
 Run an iperf server and client connection, on Host 1 and Host 12 respectively:
 ```bash
 xterm-h1> iperf -s -u -p 1883  # UDP iperf server on port 1883
-xterm-h12> iperf -c 10.0.0.1 -u -p 1883 -t 10 -i 1  # UDP iperf client on port 1883
+xterm-h12> iperf -c 10.0.0.1 -u -p 1883 -t 10 -i 1 -b 10M  # UDP iperf client on port 1883
 ```
 
 **For h2 - h11 hosts:**
@@ -176,7 +176,7 @@ mininet> xterm h11
 Run an iperf server and client connection, on Host 2 and Host 11 respectively:
 ```bash
 xterm-h2> iperf -s -u -p 1883  # UDP iperf server on port 1883
-xterm-h11> iperf -c 10.0.0.2 -u -p 1883 -t 10 -i 1  # UDP iperf client on port 1883
+xterm-h11> iperf -c 10.0.0.2 -u -p 1883 -t 10 -i 1 -b 10M # UDP iperf client on port 1883
 ```
 
 Check flows inserted in Switch 4, Switch 6 and Switch 5 (to do while running iperf):
@@ -199,7 +199,7 @@ mininet> xterm h7
 Run an iperf server and client connection, on Host 5 and Host 7 respectively:
 ```bash
 xterm-h5> iperf -s -p 9999  # TCP iperf server on port 9999
-xterm-h7> iperf -c 10.0.0.5 -p 9999 -t 10 -i 1  # TCP iperf client on port 9999
+xterm-h7> iperf -c 10.0.0.5 -p 9999 -t 10 -i 1 -b 100M # TCP iperf client on port 9999
 ```
 
 Check flows inserted in Switch 9, Switch 11 and Switch 10 (to do while running iperf):
@@ -242,7 +242,7 @@ mininet> xterm h1
 Run an iperf server and client connection, on Host 1 and Host 10 respectively:
 ```bash
 xterm-h1> iperf -s -u -p 1883  # UDP iperf server on port 1883
-xterm-h10> iperf -c 10.0.0.1 -u -p 1883 -t 10 -i 1  # UDP iperf client on port 1883
+xterm-h10> iperf -c 10.0.0.1 -u -p 1883 -t 10 -i 1 # UDP iperf client on port 1883
 ```
 
 Check flows inserted in Switch 7, Switch 3 and Switch 5 (to do while running iperf):
@@ -267,7 +267,7 @@ mininet> xterm h7
 Run an iperf server and client connection, on Host 7 and Host 10 respectively:
 ```bash
 xterm-h7> iperf -s -p 9999  # TCP iperf server on port 9999
-xterm-h10> iperf -c 10.0.0.7 -u -p 9999 -t 10 -i 1  # TCP iperf client on port 9999
+xterm-h10> iperf -c 10.0.0.7 -u -p 9999 -t 10 -i 1 # TCP iperf client on port 9999
 ```
 
 Check flows inserted in Switch 7, Switch 2 and Switch 9 (to do while running iperf):
